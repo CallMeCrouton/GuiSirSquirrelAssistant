@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import common
 import core
 import logging
@@ -39,10 +40,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Read status and create Mirror instance globally
-status_path = os.path.join(BASE_PATH, "config", "status_selection.txt")
+status_json_path = os.path.join(BASE_PATH, "config", "status_selection.json")
+
+status = "poise"  # Default fallback
+
 try:
-    with open(status_path) as f:
-        status = f.read().strip().lower()
+    if os.path.exists(status_json_path):
+        with open(status_json_path) as f:
+            data = json.load(f)
+            statuses = data.get("selected_statuses", [])
+            if statuses:
+                status = statuses[0].strip().lower()
+    
     m = mirror.Mirror(status)
     logger.info(f"Initialized Mirror with status: {status}")
 except Exception as e:
@@ -102,31 +111,25 @@ def click_matching_EXP(image_path, threshold=0.8, area="center", movewidth=0, mo
     def try_click_element(image_path, threshold, area, attempt_name):
         """Try to get coordinates and click the element."""
         try:
-            logger.debug(f"Getting coordinates for {attempt_name}")
             found = common.match_image(image_path, threshold, area)
             
             if found and len(found) > 0:
                 x, y = found[0]
-                logger.debug(f"Found at coordinates ({x}, {y}), clicking")
                 common.mouse_move_click(x, y)
-                logger.info(f"Successfully clicked element on {attempt_name}")
                 return True
             else:
-                logger.debug(f"No valid coordinates found on {attempt_name}")
                 return False
         except Exception as e:
             logger.error(f"Exception during click attempt ({attempt_name}): {e}")
             return False
     
     # Attempt 1: Direct check and click
-    logger.info(f"Attempt 1: Direct check")
     if verify_element_visible(image_path, threshold):
         if try_click_element(image_path, threshold, area, "initial check"):
             return True
     
     # Attempt 2: First drag
     try:
-        logger.info(f"Attempt 2: First drag operation")
         common.mouse_move(movewidth, moveheight)
         common.mouse_drag(dragwidth, dragheight, dragspeed)
         time.sleep(0.5)  # Wait after drag
@@ -139,7 +142,6 @@ def click_matching_EXP(image_path, threshold=0.8, area="center", movewidth=0, mo
     
     # Attempt 3: Second drag
     try:
-        logger.info(f"Attempt 3: Second drag operation")
         common.mouse_move(move2width, move2height)
         common.mouse_drag(drag2width, drag2height, dragspeed)
         time.sleep(0.5)  # Wait after drag
@@ -369,7 +371,7 @@ def navigate_to_exp(Stage):
     time.sleep(0.5)  # Wait 0.5 seconds for UI transition
     
     # Check if we're in squad select
-    if common.element_exist("pictures/mirror/general/squad_select.png"):
+    if common.element_exist("pictures/CustomAdded1080p/general/squad_select.png"):
         logger.info(f"Squad select screen detected")
         squad_select_lux(m)
         common.key_press(Key="esc",presses=2)
@@ -391,12 +393,12 @@ def navigate_to_threads(Difficulty):
     handles squad selection, and manages post-battle confirmations.
     
     Args:
-        Difficulty: The thread difficulty level to navigate to (20, 30, 40, or 50)
+        Difficulty: The thread difficulty level to navigate to (20, 30, 40, 50, or 'latest')
     """
     logger.info(f"Navigating to Thread difficulty {Difficulty}")
     
     # Validate input
-    if Difficulty not in [20, 30, 40, 50]:
+    if Difficulty != "latest" and Difficulty not in [20, 30, 40, 50]:
         logger.error(f"Invalid thread difficulty: {Difficulty}")
         return
         
@@ -419,34 +421,44 @@ def navigate_to_threads(Difficulty):
         
     # Click enter
     logger.debug(f"Enter button found, clicking it")
-    common.click_matching("pictures/CustomAdded1080p/luxcavation/thread/enter.png")
+    common.mouse_move_click(common.scale_x_1080p(564),common.scale_y_1080p(722))
+    time.sleep(0.5)
     
-    # Construct the difficulty-specific image path
-    difficulty_image = f"pictures/CustomAdded1080p/luxcavation/thread/difficulty{Difficulty}.png"
-    
-    # Check if the difficulty is immediately visible
-    logger.info(f"Checking for Thread difficulty {Difficulty}")
-    if common.element_exist(difficulty_image, 0.95):
-        logger.debug(f"Difficulty {Difficulty} found, clicking directly")
-        common.click_matching(difficulty_image, 0.95, area="center", mousegoto200="0")
+    # Handle "latest" vs numeric difficulties
+    if Difficulty == "latest":
+        logger.info(f"clicking latest using coordinates")
+        screenWidth, screenHeight = common.get_resolution()
+        common.mouse_move_click(screenWidth * 0.4817, screenHeight * 0.6713)
+        success = True
     else:
-        # Scroll to find the difficulty
-        logger.info(f"Difficulty not immediately visible, scrolling to find it")
-        for i in range(7):
-            found_matches = common.match_image("pictures/CustomAdded1080p/luxcavation/thread/difficulty.png", 0.95, area="left")
-            if found_matches:
-                x, y = found_matches[0]
-                common.mouse_move(x, y)
-                common.mouse_scroll(1000)
-                logger.debug(f"Scroll attempt {i+1}/7")
-                
-        logger.info(f"Attempting to click difficulty {Difficulty} after scrolling")
-        common.click_matching(difficulty_image, 0.95, area="center", mousegoto200="0")
+        # Construct the difficulty-specific image path
+        difficulty_image = f"pictures/CustomAdded1080p/luxcavation/thread/difficulty{Difficulty}.png"
+        
+        # Check if the difficulty is immediately visible
+        logger.info(f"Checking for Thread difficulty {Difficulty}")
+        if common.element_exist(difficulty_image, 0.97):
+            logger.debug(f"Difficulty {Difficulty} found, clicking directly")
+            common.click_matching(difficulty_image, 0.97, area="center", mousegoto200="0")
+            success = True
+        else:
+            # Scroll to find the difficulty
+            logger.info(f"Difficulty not immediately visible, scrolling to find it")
+            for i in range(7):
+                found_matches = common.match_image("pictures/CustomAdded1080p/luxcavation/thread/difficulty.png", 0.97, area="left")
+                if found_matches:
+                    x, y = found_matches[0]
+                    common.mouse_move(x, y)
+                    common.mouse_scroll(1000)
+                    logger.debug(f"Scroll attempt {i+1}/7")
+                    
+            logger.info(f"Attempting to click difficulty {Difficulty} after scrolling")
+            common.click_matching(difficulty_image, 0.97, area="center", mousegoto200="0")
+            success = True
         
     logger.debug(f"Click successful, waiting for UI to settle...")
     time.sleep(0.5)  # Wait 0.5 seconds for UI transition
         
-    if common.element_exist("pictures/mirror/general/squad_select.png"):
+    if common.element_exist("pictures/CustomAdded1080p/general/squad_select.png"):
         logger.info(f"Squad select screen detected")
         squad_select_lux(m)
         logger.info(f"Difficulty {Difficulty} navigation and battle complete")

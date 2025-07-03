@@ -126,7 +126,29 @@ def call_function(function_string):
                 module = importlib.import_module(module_name)
             
             # Get the function
-            func = getattr(module, function_name)
+            try:
+                func = getattr(module, function_name)
+            except AttributeError:
+                # Special handling for mirror module - try Mirror class methods
+                if module_name == "mirror":
+                    try:
+                        # Check if it's a method of the Mirror class
+                        mirror_class = getattr(module, "Mirror")
+                        if hasattr(mirror_class, function_name):
+                            default_status = "poise"
+                            status = default_status
+                            method_args = args
+                            
+                            mirror_instance = mirror_class(status)
+                            func = getattr(mirror_instance, function_name)
+                            args = method_args
+                        else:
+                            raise AttributeError(f"Method {function_name} not found in Mirror class")
+                    except Exception as e:
+                        logger.error(f"Mirror class error: {e}")
+                        return False
+                else:
+                    raise  # Re-raise for non-mirror modules
             
             # Call the function with arguments
             logger.info(f"Calling {module_name}.{function_name} with args: {args}")
@@ -165,8 +187,7 @@ def main():
     global running
     
     if len(sys.argv) < 2:
-        logger.error("No function specified")
-        print("Usage: python function_runner.py <module.function>")
+        logger.error("No function specified - Usage: python function_runner.py <module.function>")
         return
     
     function_string = sys.argv[1]

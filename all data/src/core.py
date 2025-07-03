@@ -80,9 +80,16 @@ def post_run_load():
 
 def reconnect():
     while(common.element_exist("pictures/general/server_error.png")):
-        common.sleep(6)
-        common.click_matching("pictures/general/retry.png")
-        common.mouse_move(200,200)
+        if common.RECONNECT_WHEN_INTERNET_REACHABLE:
+            if common.check_internet_connection():
+                common.click_matching("pictures/general/retry.png")
+                common.mouse_move(200,200)
+            else:
+                common.sleep(1)
+        else:
+            common.sleep(common.RECONNECTION_DELAY)
+            common.click_matching("pictures/general/retry.png")
+            common.mouse_move(200,200)
     if common.element_exist("pictures/general/no_op.png"):
         common.click_matching("pictures/general/close.png")
         logger.info(f"COULD NOT RECONNECT TO THE SERVER. SHUTTING DOWN!")
@@ -98,11 +105,17 @@ def battle():
     winrate_invisible_timeout = 30
     
     while(battle_finished != 1):
+        if common.element_exist("pictures/general/server_error.png"):
+            common.mouse_up()
+            logger.info(f"Lost Connection to Server, Reconnecting")
+            reconnect()
+
         if common.element_exist("pictures/general/loading.png"): #Checks for loading screen to end the while loop
             common.mouse_up()
             if common.element_exist("pictures/battle/winrate.png"):
                 battle()
                 return
+
             logger.info(f"Loading")
             battle_finished = 1
             common.sleep(3)
@@ -129,11 +142,22 @@ def battle():
             elif current_time - winrate_visible_start > winrate_timeout:
                 logger.warning(f"Winrate screen stuck for {winrate_timeout} seconds, attempting direct click")
                 common.mouse_up()
-                common.click_matching("pictures/battle/winrate.png")
+                common.click_matching("pictures/battle/winrate.png", 0.9)
+                ego_check()
                 common.key_press("enter")
                 winrate_visible_start = None
+            else:
+                # Normal winrate handling
+                common.mouse_up()
+                x,y = common.uniform_scale_coordinates(2165,1343)
+                common.mouse_move_click(x,y)
+                common.key_press("p")
+                ego_check()
+                common.key_press("enter")
+                common.mouse_down()
+
         else: # Check if winrate hasn't been visible for too long and battle might have ended or winrate might be covered
-            if common.element_exist("pictures/CustomAdded1080p/mirror/general/InMirrorSelectCheck.png"): #checks for a special button in the mirror select menu to stop the battle.
+            if common.element_exist("pictures/CustomAdded1080p/mirror/general/InMirrorSelectCheck.png") or common.element_exist("pictures/mirror/general/encounter_reward.png"): #checks for a special button in the mirror select menu to stop the battle.
                 battle_finished = 1
                 logger.debug(f"finished battle")
                 return
@@ -148,23 +172,13 @@ def battle():
                 common.mouse_up()
                 common.mouse_move_click(screenWidth * 0.5,screenHeight * 0.5)
                 winrate_invisible_start = None
-            
-        # Normal winrate handling
-        common.mouse_up()
-        x,y = common.uniform_scale_coordinates(2165,1343)
-        common.mouse_move_click(x,y)
-        common.key_press("p")
-        ego_check()
-        common.key_press("enter")
-        common.mouse_down()
-
-        if common.element_exist("pictures/general/server_error.png"):
-            common.mouse_up()
-            logger.info(f"Lost Connection to Server, Reconnecting")
-            reconnect()
 
 def ego_check():
     """Checks for hopeless/struggling clashes and uses E.G.O if possible"""
+    # Check if we should skip ego selection
+    if hasattr(common, 'SKIP_EGO_CHECK') and common.SKIP_EGO_CHECK:
+        return
+        
     bad_clashes = []
     if common.element_exist("pictures/battle/ego/hopeless.png",0.79):
         logger.debug(f"HOPELESS FOUND")
