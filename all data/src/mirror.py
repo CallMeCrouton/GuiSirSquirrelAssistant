@@ -641,7 +641,7 @@ class Mirror:
             
         for i in statuses:
             status = mirror_utils.get_status_gift_template(i)
-            status_coords = common.ifexist_match(status, 0.75)
+            status_coords = common.ifexist_match(status, 0.85)
             if status_coords:
                 self.logger.info(f"FUSION: Found {i} status at: {status_coords}")
                 fusion_gifts += status_coords
