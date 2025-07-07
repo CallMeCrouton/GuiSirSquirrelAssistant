@@ -152,6 +152,8 @@ def battle():
                 x,y = common.uniform_scale_coordinates(2165,1343)
                 common.mouse_move_click(x,y)
                 common.key_press("p")
+                # on slower machine, it can take a little bit for winrate to go through
+                common.sleep(0.5)
                 ego_check()
                 common.key_press("enter")
                 common.mouse_down()
@@ -218,8 +220,11 @@ def ego_check():
                     common.mouse_move_click(200,200)
                     common.sleep(1)
         common.key_press("p") #Change to Damage
+        common.sleep(0.5)
         common.key_press("p") #Deselects
+        common.sleep(0.5)
         common.key_press("p") #Back to winrate
+        common.sleep(0.5)
     return
     
 def battle_check(): #pink shoes, woppily, doomsday clock

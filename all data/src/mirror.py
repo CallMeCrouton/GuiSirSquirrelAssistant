@@ -750,6 +750,10 @@ class Mirror:
         return exception_gifts
     
     def fuse_gifts(self):
+        # Check if we should fuse EGO gifts
+        if hasattr(common, 'SKIP_EGO_FUSION') and common.SKIP_EGO_FUSION:
+            return
+
         statuses = ["burn","bleed","tremor","rupture","sinking","poise","charge","slash","pierce","blunt"] #List of status to use
         statuses.remove(self.status)
         self.logger.info(f"Starting Fusion")
@@ -1088,6 +1092,7 @@ class Mirror:
         common.click_matching("pictures/general/beeg_confirm.png")
         common.mouse_move(200,200)
         common.click_matching("pictures/general/claim_rewards.png")
+        common.sleep(1)
         common.click_matching("pictures/general/md_claim.png")
         common.sleep(0.5)
         if common.element_exist("pictures/general/confirm_w.png"):

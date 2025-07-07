@@ -73,6 +73,7 @@ class SharedVars:
         self.convert_images_to_grayscale = Value('b', True)
         self.reconnection_delay = Value('i', 6)
         self.reconnect_when_internet_reachable = Value('b', False)
+        self.skip_ego_fusion = Value('b', False)
 
 # Define python interpreter path based on whether we're frozen or not
 def get_python_command():
@@ -745,6 +746,7 @@ def save_gui_config(config=None):
                 'convert_images_to_grayscale': bool(shared_vars.convert_images_to_grayscale.value) if 'shared_vars' in globals() else True,
                 'reconnection_delay': int(shared_vars.reconnection_delay.value) if 'shared_vars' in globals() else 6,
                 'reconnect_when_internet_reachable': bool(shared_vars.reconnect_when_internet_reachable.value) if 'shared_vars' in globals() else False,
+                'skip_ego_fusion': bool(shared_vars.skip_ego_fusion.value) if 'shared_vars' in globals() else False,
             }
         except Exception as e:
             error(f"Error setting up Settings section: {e}")
@@ -894,6 +896,7 @@ try:
     shared_vars.hard_mode.value = config['Settings'].get('hard_mode', False)
     shared_vars.convert_images_to_grayscale.value = config['Settings'].get('convert_images_to_grayscale', True)
     shared_vars.reconnection_delay.value = config['Settings'].get('reconnection_delay', 6)
+    shared_vars.skip_ego_fusion.value = config['Settings'].get('skip_ego_fusion', False)
 except Exception as e:
     error(f"Error loading automation settings: {e}")
 
@@ -2578,6 +2581,18 @@ def load_settings_tab():
         command=update_prioritize_list
     )
     prioritize_list_cb.pack(anchor="w", padx=10, pady=5)
+
+    skip_ego_fusion_var = ctk.BooleanVar(value=shared_vars.skip_ego_fusion.value)
+    def update_skip_ego_fusion():
+        shared_vars.skip_ego_fusion.value = skip_ego_fusion_var.get()
+        save_gui_config()
+    skip_ego_check_cb = ctk.CTkCheckBox(
+        automation_frame,
+        text="Skip EGO gift fusion",
+        variable=skip_ego_fusion_var,
+        command=update_skip_ego_fusion
+    )
+    skip_ego_check_cb.pack(anchor="w", padx=10, pady=5)
 
     # Keyboard shortcut configuration section
     ctk.CTkLabel(settings_scroll, text="Keyboard Shortcuts", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(8, 0))
